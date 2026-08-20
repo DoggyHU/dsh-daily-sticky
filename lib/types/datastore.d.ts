@@ -5,14 +5,6 @@ export declare class Datastore {
     constructor(dataDir: string);
     planPath(date: string): string;
     logPath(date: string): string;
-    gapsPath(): string;
-    /** 查漏 tags: session_id → {status, at}. Persists so handled sessions stay hidden. */
-    readGapTags(): Record<string, {
-        status: string;
-        at: string;
-    }>;
-    /** Tag one session as handled (added=已补录 / ignored=已忽略). */
-    setGapTag(sessionId: string, status: 'added' | 'ignored'): void;
     readPlan(date: string): StickyPlan;
     /**
      * When a new day's plan does not exist yet, seed it with the unfinished

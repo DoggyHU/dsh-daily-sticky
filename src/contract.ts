@@ -228,49 +228,6 @@ export const aiExtractResultSchema = z.object({
   model: z.string(),
 }).readonly()
 
-/** Wire codec: the 查漏 scan request (window in days). */
-export const gapScanInputSchema = z.object({
-  days: z.number().int().min(1).max(30).optional(),
-}).readonly()
-
-/** Wire codec: a 查漏 tag (added=已补录 / ignored=已忽略, hidden next scans). */
-export const gapTagStatusSchema = z.enum(['added', 'ignored'])
-export type GapTagStatus = 'added' | 'ignored'
-
-/** Wire codec: one tagged session inside a tagGaps request. */
-export const gapTagItemSchema = z.object({
-  session_id: z.string().min(1),
-  status: gapTagStatusSchema,
-}).readonly()
-
-/** Wire codec: batch-tag sessions as handled so 查漏 stops listing them. */
-export const tagGapsInputSchema = z.object({
-  sessions: z.array(gapTagItemSchema).max(200),
-}).readonly()
-
-/** Wire codec: one session surfaced by the 查漏 scan. */
-export const gapSessionItemSchema = z.object({
-  session_id: z.string(),
-  title: z.string(),
-  workspace: z.string(),
-  workspace_label: z.string(),
-  last_active: z.string(),
-  unread: z.boolean(),
-  status: z.enum(['read', 'unread', 'awaiting', 'fresh']),
-  last_user_text: z.string(),
-  excerpt: z.array(z.string()),
-}).readonly()
-
-/** Wire codec: the full 查漏 scan result. */
-export const gapScanResultSchema = z.object({
-  window_days: z.number().int(),
-  scanned: z.number().int().nonnegative(),
-  /** Sessions hidden because they already carry a 查漏 tag. */
-  excluded: z.number().int().nonnegative(),
-  unread: z.number().int().nonnegative(),
-  sessions: z.array(gapSessionItemSchema),
-}).readonly()
-
 // ---- Public input type aliases for the host runtime (from the wire schemas) ----
 export type DateInput = string
 export interface AddTaskInput { readonly date: string; readonly text: string; readonly note?: string }
@@ -284,27 +241,6 @@ export interface AiExtractTask { readonly text: string; readonly note?: string }
 export interface AiExtractResult { readonly tasks: AiExtractTask[]; readonly model: string }
 export interface ModelChoice { readonly provider: string; readonly model: string; readonly display_name: string }
 export interface ModelListResult { readonly current: { readonly provider: string; readonly model: string } | null; readonly options: ModelChoice[] }
-export interface GapScanInput { readonly days?: number }
-export interface GapTagItem { readonly session_id: string; readonly status: GapTagStatus }
-export interface TagGapsInput { readonly sessions: GapTagItem[] }
-export interface GapSessionItem {
-  readonly session_id: string
-  readonly title: string
-  readonly workspace: string
-  readonly workspace_label: string
-  readonly last_active: string
-  readonly unread: boolean
-  readonly status: 'read' | 'unread' | 'awaiting' | 'fresh'
-  readonly last_user_text: string
-  readonly excerpt: string[]
-}
-export interface GapScanResult {
-  readonly window_days: number
-  readonly scanned: number
-  readonly excluded: number
-  readonly unread: number
-  readonly sessions: GapSessionItem[]
-}
 
 /** The sticky Remote namespace's strict invocation descriptors. */
 export const STICKY_INVOCATIONS: readonly InvocationDescriptor[] = [
@@ -419,34 +355,6 @@ export const STICKY_INVOCATIONS: readonly InvocationDescriptor[] = [
       codec: { mode: 'strict', typeSymbol: 'dsh-daily-sticky#AiExtractInput', schema: aiExtractInputSchema },
     }],
     result: { mode: 'strict', typeSymbol: 'dsh-daily-sticky#AiExtractResult', schema: aiExtractResultSchema },
-  },
-  {
-    id: 'dsh-daily-sticky#sticky/scanGaps',
-    service: 'sticky',
-    namespace: 'sticky',
-    method: 'scanGaps',
-    invocation: { kind: 'direct' },
-    parameters: [{
-      name: 'input',
-      wire: 'input',
-      source: 'json',
-      codec: { mode: 'strict', typeSymbol: 'dsh-daily-sticky#GapScanInput', schema: gapScanInputSchema },
-    }],
-    result: { mode: 'strict', typeSymbol: 'dsh-daily-sticky#GapScanResult', schema: gapScanResultSchema },
-  },
-  {
-    id: 'dsh-daily-sticky#sticky/tagGaps',
-    service: 'sticky',
-    namespace: 'sticky',
-    method: 'tagGaps',
-    invocation: { kind: 'direct' },
-    parameters: [{
-      name: 'input',
-      wire: 'input',
-      source: 'json',
-      codec: { mode: 'strict', typeSymbol: 'dsh-daily-sticky#TagGapsInput', schema: tagGapsInputSchema },
-    }],
-    result: { mode: 'strict', typeSymbol: 'dsh-daily-sticky#GapScanResult', schema: gapScanResultSchema },
   },
   {
     id: 'dsh-daily-sticky#sticky/listModels',

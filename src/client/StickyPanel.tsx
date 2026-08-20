@@ -7,9 +7,8 @@
  * no emoji — typographic, DSH-style controls throughout. Draggable header,
  * collapsible body, task lines with check/note/edit/delete, a two-mode input
  * (manual add + AI 智能输入 that turns a messy paragraph into tasks using the
- * model DSH is currently using), a 查漏 button that scans the last 2 days of
- * DSH sessions for unresolved conversations, and a stats popup (week/month +
- * WoW/MoM deltas). Data flows through the `sticky` Remote namespace.
+ * model DSH is currently using), and a stats section (week/month + WoW/MoM
+ * deltas). Data flows through the `sticky` Remote namespace.
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react'
@@ -20,7 +19,6 @@ import type {
   StickyStats,
   AiExtractTask,
   ModelChoice,
-  GapScanResult,
 } from '../contract.ts'
 import type { StickyNamespaceFace } from './types.ts'
 
@@ -245,138 +243,6 @@ function StatsSection({ stats, onClose }: { stats: StickyStats; onClose: () => v
   )
 }
 
-// --- gap (查漏) inline section ---
-
-function GapSection({ result, drafts, checked, expanded, adding, error, showFresh, onDraft, onToggle, onExpand, onIgnore, onClose, onAdd, onToggleFresh }: {
-  result: GapScanResult
-  drafts: Record<string, string>
-  checked: Record<string, boolean>
-  expanded: Record<string, boolean>
-  adding: boolean
-  error: string | null
-  showFresh: boolean
-  onDraft: (id: string, text: string) => void
-  onToggle: (id: string) => void
-  onExpand: (id: string) => void
-  onIgnore: (id: string) => void
-  onClose: () => void
-  onAdd: () => void
-  onToggleFresh: () => void
-}) {
-  const box: CSSProperties = {
-    border: `1px solid ${T.border}`,
-    borderRadius: 8,
-    background: T.surface2,
-    padding: '8px 10px',
-    marginBottom: 8,
-  }
-  const actionable = result.sessions.filter(s => s.status !== 'read' && (s.status !== 'fresh' || showFresh))
-  const pickedCount = actionable.filter(s => checked[s.session_id]).length
-  const nUnread = result.sessions.filter(s => s.status === 'unread').length
-  const nAwaiting = result.sessions.filter(s => s.status === 'awaiting').length
-  const nFresh = result.sessions.filter(s => s.status === 'fresh').length
-
-  const statusBadge = (s: { status: string }): { text: string; color: string } => {
-    if (s.status === 'unread') return { text: '你问没答', color: T.danger }
-    if (s.status === 'awaiting') return { text: '模型在等你', color: T.accent }
-    if (s.status === 'fresh') return { text: '刚完成', color: T.textDim }
-    return { text: '', color: T.textFaint }
-  }
-
-  return (
-    <div style={box}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <b style={{ fontSize: 12 }}>查漏（近 {result.window_days} 天）</b>
-        <button style={iconBtn} onClick={onClose} title="关闭">✕</button>
-      </div>
-      <div style={{ color: T.textDim, fontSize: 11, marginTop: 2, marginBottom: 6 }}>
-        扫描 {result.scanned} 个有更新的会话{result.excluded > 0 ? `，已处理 ${result.excluded} 个` : ''}。
-        待处理：你问没答 {nUnread} · 模型在等你 {nAwaiting} · 刚完成 {nFresh}
-        {nFresh > 0 && (
-          <button
-            style={{ ...iconBtn, fontSize: 11, color: T.accent, padding: '0 2px' }}
-            onClick={onToggleFresh}
-            title={showFresh ? '收起刚完成项' : '展开刚完成项（可能很多，默认隐藏）'}
-          >
-            {showFresh ? '收起' : '展开'}
-          </button>
-        )}
-        。补录或忽略后，下次查漏不再出现。
-      </div>
-      {error && <div style={{ color: T.danger, fontSize: 12, marginBottom: 6 }}>{error}</div>}
-      {actionable.length === 0 && (
-        <div style={{ color: T.textFaint, fontSize: 12, padding: '4px 0' }}>
-          近 {result.window_days} 天没有发现待处理事项，都很干净。
-        </div>
-      )}
-      {actionable.map(s => {
-        const badge = statusBadge(s)
-        return (
-        <div key={s.session_id} style={{ padding: '6px 0', borderBottom: `1px solid ${T.borderSoft}` }}>
-          <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
-            <input
-              type="checkbox"
-              style={{ marginTop: 3, accentColor: T.accent }}
-              checked={Boolean(checked[s.session_id])}
-              onChange={() => onToggle(s.session_id)}
-            />
-            <div style={{ flex: 1 }}>
-              <div style={{ color: T.textDim, fontSize: 11, marginBottom: 2, wordBreak: 'break-word' }}>
-                <span style={{ color: badge.color, marginRight: 4 }}>[{badge.text}]</span>
-                [{s.workspace_label}] 「{s.title || s.session_id}」 · 最后活动 {s.last_active}
-              </div>
-              <input
-                style={{ ...inputStyle, fontSize: 12 }}
-                value={drafts[s.session_id] ?? s.last_user_text}
-                placeholder="（无文字内容，可手写要补录的事）"
-                onChange={e => onDraft(s.session_id, e.target.value)}
-              />
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
-                {s.excerpt.length > 0 && (
-                  <button
-                    style={{ ...iconBtn, fontSize: 11, color: T.textFaint, padding: '2px 0' }}
-                    onClick={() => onExpand(s.session_id)}
-                  >
-                    {expanded[s.session_id] ? '收起详情 ▲' : '对话尾巴详情 ▼'}
-                  </button>
-                )}
-                <button
-                  style={{ ...iconBtn, fontSize: 11, color: T.textFaint, padding: '2px 0' }}
-                  title="忽略这条：打上 Tag，以后查漏不再出现"
-                  onClick={() => onIgnore(s.session_id)}
-                >
-                  忽略
-                </button>
-              </div>
-              {expanded[s.session_id] && (
-                <div style={{ color: T.textFaint, fontSize: 11, whiteSpace: 'pre-wrap', userSelect: 'text' }}>
-                  {s.excerpt.join('\n\n')}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-        )
-      })}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginTop: 8 }}>
-        <span style={{ color: T.textFaint, fontSize: 12 }}>勾选 {pickedCount} 项</span>
-        <button
-          style={{
-            ...iconBtn,
-            color: pickedCount > 0 ? T.accent : T.textFaint,
-            background: 'var(--dsw-alias-state-business-primary-subtle, rgba(0,0,0,0.06))',
-            padding: '5px 12px',
-          }}
-          disabled={pickedCount === 0 || adding}
-          onClick={onAdd}
-        >
-          {adding ? '补录中…' : `补录 ${pickedCount} 条到今日便签`}
-        </button>
-      </div>
-    </div>
-  )
-}
-
 // --- task row ---
 
 function TaskRow({ task, ageLabel, onToggle, onEdit, onDelete, onNote }: {
@@ -501,18 +367,6 @@ export function StickyPanel({ sticky }: { sticky: StickyNamespaceFace }) {
   const [aiModelKey, setAiModelKey] = useState('')
   const [modelOptions, setModelOptions] = useState<ModelChoice[]>([])
 
-  // --- 查漏 ---
-  const [showGaps, setShowGaps] = useState(false)
-  const [gaps, setGaps] = useState<GapScanResult | null>(null)
-  const [gapsLoading, setGapsLoading] = useState(false)
-  const [gapsError, setGapsError] = useState<string | null>(null)
-  const [gapDrafts, setGapDrafts] = useState<Record<string, string>>({})
-  const [gapChecked, setGapChecked] = useState<Record<string, boolean>>({})
-  const [gapExpanded, setGapExpanded] = useState<Record<string, boolean>>({})
-  const [gapsAdding, setGapsAdding] = useState(false)
-  // "刚完成" items are noisy; show them only when the user opts in.
-  const [showFresh, setShowFresh] = useState(false)
-
   const date = todayKey()
 
   // Populate the AI model selector from DSH's own LLM list when AI mode is shown.
@@ -605,76 +459,6 @@ export function StickyPanel({ sticky }: { sticky: StickyNamespaceFace }) {
     setAiLoading(false)
   }
 
-  const runGapScan = async () => {
-    // Show the (inline, non-blocking) results section right away so the user
-    // sees the scan state instead of a full-screen mask.
-    setShowGaps(true)
-    setGapsLoading(true)
-    setGapsError(null)
-    const res = await sticky.scanGaps({ days: 2 })
-    if (res.ok) {
-      setGaps(res.value)
-      const drafts: Record<string, string> = {}
-      const checked: Record<string, boolean> = {}
-      for (const s of res.value.sessions) {
-        if (s.status === 'read' || (s.status === 'fresh' && !showFresh)) continue
-        drafts[s.session_id] = s.last_user_text
-        checked[s.session_id] = true
-      }
-      setGapDrafts(drafts)
-      setGapChecked(checked)
-      setGapExpanded({})
-    } else {
-      setGapsError(res.error?.message ?? '查漏失败')
-    }
-    setGapsLoading(false)
-  }
-
-  const addGapItems = async () => {
-    if (!gaps) return
-    const picked = gaps.sessions.filter(s => s.status !== 'read' && (s.status !== 'fresh' || showFresh) && gapChecked[s.session_id])
-    if (picked.length === 0) return
-    setGapsAdding(true)
-    const tagged: Array<{ session_id: string; status: 'added' }> = []
-    for (const s of picked) {
-      const text = (gapDrafts[s.session_id] ?? s.last_user_text).trim()
-      if (!text) continue
-      await sticky.addTask({ date, text })
-      tagged.push({ session_id: s.session_id, status: 'added' })
-    }
-    if (tagged.length > 0) {
-      // Tag as handled so future 查漏 stops showing them.
-      const res = await sticky.tagGaps({ sessions: tagged })
-      if (res.ok) setGaps(res.value)
-      else setGapsError(res.error?.message ?? '标记已处理失败')
-    }
-    await load()
-    setGapsAdding(false)
-    setShowGaps(false)
-    setGaps(null)
-    setGapsError(null)
-  }
-
-  const ignoreGap = async (id: string) => {
-    const res = await sticky.tagGaps({ sessions: [{ session_id: id, status: 'ignored' }] })
-    if (res.ok) {
-      setGaps(res.value)
-      // Rebuild drafts/checked for the sessions still shown.
-      const drafts: Record<string, string> = {}
-      const checked: Record<string, boolean> = {}
-      for (const s of res.value.sessions) {
-        if (s.status === 'read' || (s.status === 'fresh' && !showFresh)) continue
-        drafts[s.session_id] = gapDrafts[s.session_id] ?? s.last_user_text
-        checked[s.session_id] = gapChecked[s.session_id] ?? true
-      }
-      setGapDrafts(drafts)
-      setGapChecked(checked)
-      setGapsError(null)
-    } else {
-      setGapsError(res.error?.message ?? '忽略失败')
-    }
-  }
-
   const toggleStats = async () => {
     const next = !showStats
     setShowStats(next)
@@ -687,7 +471,7 @@ export function StickyPanel({ sticky }: { sticky: StickyNamespaceFace }) {
 
   const onDragStart = (e: ReactPointerEvent) => {
     // Never initiate a drag from a control (buttons/inputs/links): keeps the
-    // header buttons (查漏/统计/收起/✕) clickable without dragging the panel.
+    // header buttons (统计/收起/✕) clickable without dragging the panel.
     const target = e.target as HTMLElement
     if (target.closest('button, input, textarea, a')) return
     const panel = panelRef.current
@@ -757,7 +541,6 @@ export function StickyPanel({ sticky }: { sticky: StickyNamespaceFace }) {
             onPointerCancel={onDragEnd}
           >
             <span style={titleStyle} title={date}>今日便签 {badge !== '' ? `(${badge})` : ''}</span>
-            <button style={iconBtn} title="查漏（近 2 天未决会话）" onClick={() => void runGapScan()}>查漏</button>
             <button style={iconBtn} title="统计（周/月环比）" onClick={() => void toggleStats()}>统计</button>
             <button style={iconBtn} title={collapsed ? '展开' : '收起'} onClick={() => setCollapsed(c => !c)}>{collapsed ? '展开' : '收起'}</button>
             <button style={iconBtn} title="关闭" onClick={() => setOpen(false)}>✕</button>
@@ -770,27 +553,6 @@ export function StickyPanel({ sticky }: { sticky: StickyNamespaceFace }) {
           {!collapsed && (
             <>
               <div style={bodyStyle}>
-                {gapsLoading && (
-                  <div style={{ padding: '6px 8px', color: T.textDim, fontSize: 12 }}>查漏中，扫描近 2 天会话…</div>
-                )}
-                {showGaps && gaps && (
-                  <GapSection
-                    result={gaps}
-                    drafts={gapDrafts}
-                    checked={gapChecked}
-                    expanded={gapExpanded}
-                    adding={gapsAdding}
-                    error={gapsError}
-                    showFresh={showFresh}
-                    onDraft={(id, text) => setGapDrafts(prev => ({ ...prev, [id]: text }))}
-                    onToggle={id => setGapChecked(prev => ({ ...prev, [id]: !prev[id] }))}
-                    onExpand={id => setGapExpanded(prev => ({ ...prev, [id]: !prev[id] }))}
-                    onIgnore={id => void ignoreGap(id)}
-                    onClose={() => { setShowGaps(false); setGaps(null); setGapsError(null) }}
-                    onAdd={() => void addGapItems()}
-                    onToggleFresh={() => setShowFresh(v => !v)}
-                  />
-                )}
                 {showStats && stats && (
                   <StatsSection stats={stats} onClose={() => setShowStats(false)} />
                 )}

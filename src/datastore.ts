@@ -81,33 +81,6 @@ export class Datastore {
     return join(this.dataDir, 'logs', `${date}.json`)
   }
 
-  gapsPath(): string {
-    return join(this.dataDir, 'gaps.json')
-  }
-
-  /** 查漏 tags: session_id → {status, at}. Persists so handled sessions stay hidden. */
-  readGapTags(): Record<string, { status: string; at: string }> {
-    const raw = readJson<Record<string, { status?: unknown; at?: unknown }>>(this.gapsPath())
-    if (!raw) return {}
-    const out: Record<string, { status: string; at: string }> = {}
-    for (const [id, t] of Object.entries(raw)) {
-      if (!id || !t) continue
-      const status = typeof t.status === 'string' ? t.status : 'ignored'
-      const at = typeof t.at === 'string' ? t.at : isoNow()
-      if (status !== 'added' && status !== 'ignored') continue
-      out[id] = { status, at }
-    }
-    return out
-  }
-
-  /** Tag one session as handled (added=已补录 / ignored=已忽略). */
-  setGapTag(sessionId: string, status: 'added' | 'ignored'): void {
-    if (!sessionId) return
-    const tags = this.readGapTags()
-    tags[sessionId] = { status, at: isoNow() }
-    writeJson(this.gapsPath(), tags)
-  }
-
   readPlan(date: string): StickyPlan {
     this.seedCarryover(date)
     const existing = readJson<StickyPlan>(this.planPath(date))

@@ -248,74 +248,6 @@ export declare const aiExtractResultSchema: z.ZodReadonly<z.ZodObject<{
     }, z.core.$strip>>>;
     model: z.ZodString;
 }, z.core.$strip>>;
-/** Wire codec: the 查漏 scan request (window in days). */
-export declare const gapScanInputSchema: z.ZodReadonly<z.ZodObject<{
-    days: z.ZodOptional<z.ZodNumber>;
-}, z.core.$strip>>;
-/** Wire codec: a 查漏 tag (added=已补录 / ignored=已忽略, hidden next scans). */
-export declare const gapTagStatusSchema: z.ZodEnum<{
-    added: "added";
-    ignored: "ignored";
-}>;
-export type GapTagStatus = 'added' | 'ignored';
-/** Wire codec: one tagged session inside a tagGaps request. */
-export declare const gapTagItemSchema: z.ZodReadonly<z.ZodObject<{
-    session_id: z.ZodString;
-    status: z.ZodEnum<{
-        added: "added";
-        ignored: "ignored";
-    }>;
-}, z.core.$strip>>;
-/** Wire codec: batch-tag sessions as handled so 查漏 stops listing them. */
-export declare const tagGapsInputSchema: z.ZodReadonly<z.ZodObject<{
-    sessions: z.ZodArray<z.ZodReadonly<z.ZodObject<{
-        session_id: z.ZodString;
-        status: z.ZodEnum<{
-            added: "added";
-            ignored: "ignored";
-        }>;
-    }, z.core.$strip>>>;
-}, z.core.$strip>>;
-/** Wire codec: one session surfaced by the 查漏 scan. */
-export declare const gapSessionItemSchema: z.ZodReadonly<z.ZodObject<{
-    session_id: z.ZodString;
-    title: z.ZodString;
-    workspace: z.ZodString;
-    workspace_label: z.ZodString;
-    last_active: z.ZodString;
-    unread: z.ZodBoolean;
-    status: z.ZodEnum<{
-        unread: "unread";
-        read: "read";
-        awaiting: "awaiting";
-        fresh: "fresh";
-    }>;
-    last_user_text: z.ZodString;
-    excerpt: z.ZodArray<z.ZodString>;
-}, z.core.$strip>>;
-/** Wire codec: the full 查漏 scan result. */
-export declare const gapScanResultSchema: z.ZodReadonly<z.ZodObject<{
-    window_days: z.ZodNumber;
-    scanned: z.ZodNumber;
-    excluded: z.ZodNumber;
-    unread: z.ZodNumber;
-    sessions: z.ZodArray<z.ZodReadonly<z.ZodObject<{
-        session_id: z.ZodString;
-        title: z.ZodString;
-        workspace: z.ZodString;
-        workspace_label: z.ZodString;
-        last_active: z.ZodString;
-        unread: z.ZodBoolean;
-        status: z.ZodEnum<{
-            unread: "unread";
-            read: "read";
-            awaiting: "awaiting";
-            fresh: "fresh";
-        }>;
-        last_user_text: z.ZodString;
-        excerpt: z.ZodArray<z.ZodString>;
-    }, z.core.$strip>>>;
-}, z.core.$strip>>;
 export type DateInput = string;
 export interface AddTaskInput {
     readonly date: string;
@@ -370,34 +302,6 @@ export interface ModelListResult {
         readonly model: string;
     } | null;
     readonly options: ModelChoice[];
-}
-export interface GapScanInput {
-    readonly days?: number;
-}
-export interface GapTagItem {
-    readonly session_id: string;
-    readonly status: GapTagStatus;
-}
-export interface TagGapsInput {
-    readonly sessions: GapTagItem[];
-}
-export interface GapSessionItem {
-    readonly session_id: string;
-    readonly title: string;
-    readonly workspace: string;
-    readonly workspace_label: string;
-    readonly last_active: string;
-    readonly unread: boolean;
-    readonly status: 'read' | 'unread' | 'awaiting' | 'fresh';
-    readonly last_user_text: string;
-    readonly excerpt: string[];
-}
-export interface GapScanResult {
-    readonly window_days: number;
-    readonly scanned: number;
-    readonly excluded: number;
-    readonly unread: number;
-    readonly sessions: GapSessionItem[];
 }
 /** The sticky Remote namespace's strict invocation descriptors. */
 export declare const STICKY_INVOCATIONS: readonly InvocationDescriptor[];

@@ -28,8 +28,6 @@ export const STICKY_MANIFEST: TypertContribution = {
           { kind: 'method', name: 'setNote', signature: 'setNote(date: string, taskId: number, note?: string): StickyPlan' },
           { kind: 'method', name: 'stats', signature: 'stats(input: StatsInput): StickyStats' },
           { kind: 'method', name: 'aiExtract', signature: 'aiExtract(input: AiExtractInput): Promise<AiExtractResult>' },
-          { kind: 'method', name: 'scanGaps', signature: 'scanGaps(input: GapScanInput): GapScanResult' },
-          { kind: 'method', name: 'tagGaps', signature: 'tagGaps(input: TagGapsInput): GapScanResult' },
           { kind: 'method', name: 'listModels', signature: 'listModels(): ModelListResult' },
         ],
         types: [],

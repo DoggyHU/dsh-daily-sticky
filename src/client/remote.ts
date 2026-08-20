@@ -18,9 +18,6 @@ import type {
   AiExtractInput,
   AiExtractResult,
   ModelListResult,
-  GapScanInput,
-  GapScanResult,
-  TagGapsInput,
 } from '../contract.ts'
 
 export type {
@@ -39,11 +36,6 @@ export type {
   AiExtractResult,
   ModelChoice,
   ModelListResult,
-  GapScanInput,
-  GapSessionItem,
-  GapScanResult,
-  GapTagItem,
-  TagGapsInput,
 } from '../contract.ts'
 
 /** The sticky Remote namespace's client contribution. */
@@ -63,8 +55,6 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     setNote: (input: SetNoteInput) => Promise<RemoteResult<StickyPlan>>
     stats: (input: StatsInput) => Promise<RemoteResult<StickyStats>>
     aiExtract: (input: AiExtractInput) => Promise<RemoteResult<AiExtractResult>>
-    scanGaps: (input: GapScanInput) => Promise<RemoteResult<GapScanResult>>
-    tagGaps: (input: TagGapsInput) => Promise<RemoteResult<GapScanResult>>
     listModels: () => Promise<RemoteResult<ModelListResult>>
   }
   interface TypertRemoteMap {
@@ -76,8 +66,6 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     'sticky/setNote': (input: SetNoteInput) => Promise<RemoteResult<StickyPlan>>
     'sticky/stats': (input: StatsInput) => Promise<RemoteResult<StickyStats>>
     'sticky/aiExtract': (input: AiExtractInput) => Promise<RemoteResult<AiExtractResult>>
-    'sticky/scanGaps': (input: GapScanInput) => Promise<RemoteResult<GapScanResult>>
-    'sticky/tagGaps': (input: TagGapsInput) => Promise<RemoteResult<GapScanResult>>
     'sticky/listModels': () => Promise<RemoteResult<ModelListResult>>
   }
   interface TypertRemoteNamespaceMap {

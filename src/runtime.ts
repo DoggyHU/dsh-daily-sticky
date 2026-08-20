@@ -20,15 +20,11 @@ import type {
   AiExtractInput,
   AiExtractResult,
   ModelListResult,
-  GapScanInput,
-  GapScanResult,
-  TagGapsInput,
 } from './contract.ts'
 import { computeStats } from './stats.ts'
 import { currentModelLabel, extractTasksWithLLM, listModelChoices } from './llm.ts'
-import { scanGapSessions, sessionsRoot } from './scan.ts'
 
-/** Daily sticky note service: plan CRUD + stats + AI 智能输入 + 查漏. */
+/** Daily sticky note service: plan CRUD + stats + AI 智能输入. */
 export class StickyRuntime extends TypertRemoteService {
   /**
    * Register the service under the `sticky` key (the wire namespace).
@@ -100,47 +96,5 @@ export class StickyRuntime extends TypertRemoteService {
   @Remote
   async listModels(): Promise<ModelListResult> {
     return listModelChoices(this.ctx)
-  }
-
-  /**
-   * "查漏": scan DSH sessions updated in the last `days` days (default 2) for
-   * conversations with an unanswered user turn, so the user can see what is
-   * still unresolved and add items to today's note. Sessions already tagged as
-   * handled (added/ignored) are excluded so 查漏 never loops forever.
-   */
-  @Remote
-  scanGaps(input?: GapScanInput): GapScanResult {
-    const days = input?.days ?? 2
-    const sessions = scanGapSessions(sessionsRoot(), days)
-    const tags = this.ds.readGapTags()
-    const visible = sessions.filter(s => !tags[s.sessionId])
-    const excluded = sessions.length - visible.length
-    return {
-      window_days: days,
-      scanned: sessions.length,
-      excluded,
-      unread: visible.filter(s => s.unread).length,
-      sessions: visible.map(s => ({
-        session_id: s.sessionId,
-        title: s.title,
-        workspace: s.workspace,
-        workspace_label: s.workspaceLabel,
-        last_active: s.lastActive,
-        unread: s.unread,
-        status: s.status,
-        last_user_text: s.lastUserText,
-        excerpt: s.excerpt,
-      })),
-    }
-  }
-
-  /**
-   * "查漏已处理": batch-tag sessions as added (补录过) or ignored (主动忽略) so
-   * later 查漏 runs stop listing them. Returns the refreshed scan result.
-   */
-  @Remote
-  tagGaps(input: TagGapsInput): GapScanResult {
-    for (const item of input.sessions) this.ds.setGapTag(item.session_id, item.status)
-    return this.scanGaps({ days: 2 })
   }
 }

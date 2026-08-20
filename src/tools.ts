@@ -9,7 +9,6 @@ import type { Context } from '@deepseek-ai/cordis'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { Datastore } from './datastore.ts'
 import { computeStats } from './stats.ts'
-import { scanGapSessions, sessionsRoot } from './scan.ts'
 
 function todayKey(): string {
   const d = new Date()
@@ -125,33 +124,6 @@ export function registerStickyTools(ctx: Context, ds: Datastore): void {
       )
     },
     presentCall: () => ({ card: 'generic', title: 'Sticky stats', kind: 'other', rawInput: {} }),
-  })))
-
-  disposers.push(ctx.tools.register(defineTool({
-    name: 'sticky_scan_gaps',
-    description:
-      '「查漏」：扫描 DSH 近 N 天（默认 2 天）有更新的所有会话，找出最后一条是用户提问、'
-      + '还没有 AI 回复的「未决事项」会话。Use when the user asks 查漏 / 看看有什么没处理 / '
-      + '这两天有什么悬而未决 / 有没有漏掉的事. Returns a report; offer to add the unresolved '
-      + 'items to today\'s sticky note with sticky_add_task.',
-    parameters: {
-      days: { type: 'integer', description: '扫描窗口天数，默认 2 天。' },
-    },
-    output: {
-      schema: { type: 'json' },
-      render: (_args, value) => [{ type: 'text', text: String(value) }],
-    },
-    execute(args, _exec) {
-      const sessions = scanGapSessions(sessionsRoot(), args.days ?? 2)
-      const unread = sessions.filter(s => s.unread)
-      const header = `查漏（近 ${args.days ?? 2} 天）：扫描 ${sessions.length} 个有更新的会话，疑似未决 ${unread.length} 个。`
-      if (unread.length === 0) return Promise.resolve(`${header}\n没有发现未决事项。`)
-      const lines = unread.map(s =>
-        `- [${s.workspaceLabel}]「${s.title || s.sessionId}」（最后活动 ${s.lastActive}）：${s.lastUserText.slice(0, 120)}`,
-      )
-      return Promise.resolve(`${header}\n${lines.join('\n')}\n（可把其中要做的用 sticky_add_task 加进便签）`)
-    },
-    presentCall: () => ({ card: 'generic', title: 'Sticky gap scan', kind: 'other', rawInput: {} }),
   })))
 
   // Register everything; tear down on plugin dispose.

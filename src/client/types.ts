@@ -17,9 +17,6 @@ import type {
   AiExtractInput,
   AiExtractResult,
   ModelListResult,
-  GapScanInput,
-  GapScanResult,
-  TagGapsInput,
 } from '../contract.ts'
 
 export interface StickyNamespaceFace {
@@ -31,7 +28,5 @@ export interface StickyNamespaceFace {
   setNote: (input: SetNoteInput) => Promise<RemoteResult<StickyPlan>>
   stats: (input: StatsInput) => Promise<RemoteResult<StickyStats>>
   aiExtract: (input: AiExtractInput) => Promise<RemoteResult<AiExtractResult>>
-  scanGaps: (input: GapScanInput) => Promise<RemoteResult<GapScanResult>>
-  tagGaps: (input: TagGapsInput) => Promise<RemoteResult<GapScanResult>>
   listModels: () => Promise<RemoteResult<ModelListResult>>
 }

@@ -8,8 +8,8 @@
 import type { Context } from '@deepseek-ai/cordis';
 import { TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol';
 import type { Datastore } from './datastore.ts';
-import type { StickyPlan, StickyStats, AddTaskInput, EditTaskInput, SetDoneInput, SetNoteInput, DeleteTaskInput, StatsInput, AiExtractInput, AiExtractResult, ModelListResult, GapScanInput, GapScanResult, TagGapsInput } from './contract.ts';
-/** Daily sticky note service: plan CRUD + stats + AI 智能输入 + 查漏. */
+import type { StickyPlan, StickyStats, AddTaskInput, EditTaskInput, SetDoneInput, SetNoteInput, DeleteTaskInput, StatsInput, AiExtractInput, AiExtractResult, ModelListResult } from './contract.ts';
+/** Daily sticky note service: plan CRUD + stats + AI 智能输入. */
 export declare class StickyRuntime extends TypertRemoteService {
     private readonly ds;
     /**
@@ -41,16 +41,4 @@ export declare class StickyRuntime extends TypertRemoteService {
     aiExtract(input: AiExtractInput): Promise<AiExtractResult>;
     /** Enumerate DSH's usable models for the sticky note's model selector. */
     listModels(): Promise<ModelListResult>;
-    /**
-     * "查漏": scan DSH sessions updated in the last `days` days (default 2) for
-     * conversations with an unanswered user turn, so the user can see what is
-     * still unresolved and add items to today's note. Sessions already tagged as
-     * handled (added/ignored) are excluded so 查漏 never loops forever.
-     */
-    scanGaps(input?: GapScanInput): GapScanResult;
-    /**
-     * "查漏已处理": batch-tag sessions as added (补录过) or ignored (主动忽略) so
-     * later 查漏 runs stop listing them. Returns the refreshed scan result.
-     */
-    tagGaps(input: TagGapsInput): GapScanResult;
 }
