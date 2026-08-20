@@ -7,6 +7,8 @@
  */
 import type { Context } from '@deepseek-ai/cordis'
 import { defineTool } from '@deepseek-ai/dsh-tools'
+// Brings the `ctx.userQuestions` Context augmentation (human confirm seam).
+import type {} from '@deepseek-ai/dsh-user-questions'
 import type { Datastore } from './datastore.ts'
 import { computeStats } from './stats.ts'
 
@@ -33,8 +35,15 @@ export function registerStickyTools(ctx: Context, ds: Datastore): void {
     name: 'sticky_add_task',
     description:
       'Add one line to the user\'s daily sticky note (today by default). '
-      + 'Use it when the user says something like "记一下 / 把这个加进便签 / 今天还要做 / 安排一项" '
-      + 'and it is a to-do they want on their note. Returns the added task id and the day\'s total.',
+      + 'Use it ONLY when the user explicitly asks you to remember a task THEY personally need to do '
+      + '(phrases like "记一下 / 把这个加进便签 / 今天还要做 / 安排一项 / 别忘了…"). '
+      + 'Before writing, the user is asked to confirm at the confirmation prompt; only a human "确认写入" lets it land. '
+      + 'NEVER record: your own reasoning, your self-assigned next steps, your investigation/research conclusions, '
+      + 'verification findings, debugging notes, model capability notes, or anything you decided for yourself. '
+      + 'If the user did not ask you to save a personal to-do, DO NOT call this tool at all. '
+      + 'Examples of VALID use: user says "记一下明天下午3点给老张回电话" → record that. '
+      + 'Examples of INVALID use: you conclude "rc8 不支持 read_image" and try to save that conclusion as a task — do NOT, '
+      + 'that is your own working note and is not a human to-do.',
     parameters: {
       text: { type: 'string', required: true, description: 'The task text, a short imperative line (e.g. "论文：黎老师文章 批注").' },
       note: { type: 'string', description: 'Optional 备注 appended to the line (source, deadline, context).' },
@@ -44,7 +53,38 @@ export function registerStickyTools(ctx: Context, ds: Datastore): void {
       schema: { type: 'json' },
       render: (_args, value) => [{ type: 'text', text: String(value) }],
     },
-    execute(args, _exec) {
+    async execute(args, exec) {
+      // Human-confirm the write before it lands: the sticky note is the USER's
+      // to-do list, so a model-initiated add must be ratified by a human.
+      // This stops the model from silently recording its own reasoning /
+      // next-step instructions as if they were the user's tasks.
+      let ok = false
+      try {
+        const answer = await ctx.userQuestions.ask({
+          questions: [{
+            id: 'confirm-add',
+            header: '写入今日便签',
+            question: `确认把这行加入今日便签？`,
+            detail: args.text + (args.note ? `\n\n备注：${args.note}` : ''),
+            options: [
+              { label: '确认写入', description: '这是一条人类自己要办的待办，写入便签。' },
+              { label: '不写入', description: '不要写入，取消本次添加。' },
+            ],
+            intent: { kind: 'plan-review', approve: '确认写入' },
+          }],
+          ...exec.agent !== undefined ? { agent: exec.agent } : {},
+          signal: exec.signal,
+        })
+        ok = answer.answers.some(a => a.id === 'confirm-add' && a.selected.includes('确认写入'))
+      } catch {
+        // No confirmation channel (no provider, or not a live root agent, or
+        // cancelled). Fail closed: do NOT write — the user can add it straight
+        // in the note panel instead.
+        ok = false
+      }
+      if (!ok) {
+        return Promise.resolve('未写入（未获确认）。如确需记录，请让用户在便签面板直接添加，或再次明确要求记录。')
+      }
       const plan = ds.addTask(args.date ?? todayKey(), args.text, args.note)
       const added = plan.tasks[plan.tasks.length - 1]
       return Promise.resolve(

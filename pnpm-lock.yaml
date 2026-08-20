@@ -36,6 +36,9 @@ importers:
       '@deepseek-ai/dsh-typert-registry':
         specifier: link:../../../deepseek-harness/packages/typert/registry
         version: link:../../../deepseek-harness/packages/typert/registry
+      '@deepseek-ai/dsh-user-questions':
+        specifier: link:../../../deepseek-harness/packages/interaction/user-questions
+        version: link:../../../deepseek-harness/packages/interaction/user-questions
       '@deepseek-ai/schemastery':
         specifier: link:../../../deepseek-harness/vendor/schemastery
         version: link:../../../deepseek-harness/vendor/schemastery

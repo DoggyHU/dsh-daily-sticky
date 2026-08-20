@@ -617,8 +617,14 @@ export function StickyPanel({ sticky }: { sticky: StickyNamespaceFace }) {
                     <textarea
                       style={{ ...inputStyle, minHeight: 64, resize: 'vertical', lineHeight: 1.5 }}
                       value={aiText}
-                      placeholder="贴一段乱七八糟的话 / 语音转文字，AI 抽成便签任务…"
+                      placeholder="贴一段乱七八糟的话 / 语音转文字，AI 抽成便签任务…（回车交给 AI，Shift+回车换行）"
                       onChange={e => setAiText(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault()
+                          void runAiExtract()
+                        }
+                      }}
                     />
                     <button
                       style={{ ...iconBtn, color: T.accent, alignSelf: 'flex-start', whiteSpace: 'nowrap' }}
