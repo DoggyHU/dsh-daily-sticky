@@ -95,14 +95,13 @@ export class Datastore {
     const existing = readJson<StickyBacklog>(this.backlogPath())
     if (existing === null) return this.emptyBacklog()
     return {
-      tasks: (existing.tasks ?? []).map((t: BacklogTask) => ({
+      tasks: (existing.tasks ?? []).map((t: BacklogTask) => withNote({
         backlog_id: t.backlog_id,
         text: t.text,
-        note: t.note,
         created_at: t.created_at ?? isoNow(),
         moved_at: t.moved_at ?? isoNow(),
         origin_date: t.origin_date ?? today(),
-      })),
+      }, t.note)),
       saved_at: existing.saved_at ?? isoNow(),
     }
   }

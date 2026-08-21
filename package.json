@@ -1,7 +1,7 @@
 {
   "name": "dsh-daily-sticky",
   "description": "每日语音便签 DSH web 插件：轻量浮动便签（勾选完成可取消/可编辑/可添加/可删除）+ JSON 按日日志 + 周/月数量环比统计。保留 AI 语音抽取闭环，去掉番茄钟。",
-  "version": "0.2.9",
+  "version": "0.2.10",
   "license": "MIT",
   "type": "module",
   "main": "lib/index.js",
