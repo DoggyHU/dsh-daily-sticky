@@ -37,6 +37,31 @@ export interface StickyPlan {
   readonly saved_at: string
 }
 
+/**
+ * One deferred ("晚点说") task sitting in the cross-day 待办篮子. Unlike a day
+ * task, a basket task is not bound to any calendar day: it stays in the basket
+ * until the user extracts it back onto a chosen day (becoming an active task)
+ * or deletes it.
+ */
+export interface BacklogTask {
+  /** Stable id within the basket. */
+  readonly backlog_id: number
+  readonly text: string
+  readonly note?: string
+  /** When the task was first created (any day). */
+  readonly created_at: string
+  /** When it was parked into the basket via "晚点说". */
+  readonly moved_at: string
+  /** The day it was parked from (YYYY-MM-DD), for a "3天前" style hint. */
+  readonly origin_date: string
+}
+
+/** The persistent 待办篮子 document (one cross-day basket). */
+export interface StickyBacklog {
+  readonly tasks: BacklogTask[]
+  readonly saved_at: string
+}
+
 /** One mutation typed by action (mirrors the original skill's logs event vocabulary). */
 export type StickyLogAction =
   | 'added'
@@ -117,6 +142,20 @@ export const stickyPlanSchema = z.object({
   saved_at: tsSchema,
 }).readonly()
 
+export const backlogTaskSchema = z.object({
+  backlog_id: z.number().int().nonnegative(),
+  text: textSchema,
+  note: z.string().max(2000).optional(),
+  created_at: tsSchema,
+  moved_at: tsSchema,
+  origin_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+}).readonly()
+
+export const stickyBacklogSchema = z.object({
+  tasks: z.array(backlogTaskSchema),
+  saved_at: tsSchema,
+}).readonly()
+
 export const stickyLogEventSchema = z.object({
   action: z.enum(['added', 'done', 'undone', 'edited', 'deleted', 'note']),
   task_id: z.number().int().nonnegative(),
@@ -187,6 +226,18 @@ export const deleteTaskInputSchema = z.object({
   task_id: z.number().int().nonnegative(),
 }).readonly()
 
+/** Wire codec: "晚点说" — take a day task out of the plan and into the basket. */
+export const moveToBacklogInputSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  task_id: z.number().int().nonnegative(),
+}).readonly()
+
+/** Wire codec: extract a basket task onto a chosen day as an active task. */
+export const extractFromBacklogInputSchema = z.object({
+  backlog_id: z.number().int().nonnegative(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+}).readonly()
+
 /** Wire codec: a date string for stats. */
 export const statsInputSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -235,6 +286,8 @@ export interface EditTaskInput { readonly date: string; readonly task_id: number
 export interface SetDoneInput { readonly date: string; readonly task_id: number; readonly done: boolean }
 export interface SetNoteInput { readonly date: string; readonly task_id: number; readonly note?: string }
 export interface DeleteTaskInput { readonly date: string; readonly task_id: number }
+export interface MoveToBacklogInput { readonly date: string; readonly task_id: number }
+export interface ExtractFromBacklogInput { readonly backlog_id: number; readonly date: string }
 export interface StatsInput { readonly date: string }
 export interface AiExtractInput { readonly text: string; readonly model?: { readonly provider: string; readonly model: string } }
 export interface AiExtractTask { readonly text: string; readonly note?: string }
@@ -364,5 +417,56 @@ export const STICKY_INVOCATIONS: readonly InvocationDescriptor[] = [
     invocation: { kind: 'direct' },
     parameters: [],
     result: { mode: 'strict', typeSymbol: 'dsh-daily-sticky#ModelListResult', schema: modelListResultSchema },
+  },
+  {
+    id: 'dsh-daily-sticky#sticky/moveToBacklog',
+    service: 'sticky',
+    namespace: 'sticky',
+    method: 'moveToBacklog',
+    invocation: { kind: 'direct' },
+    parameters: [{
+      name: 'input',
+      wire: 'input',
+      source: 'json',
+      codec: { mode: 'strict', typeSymbol: 'dsh-daily-sticky#MoveToBacklogInput', schema: moveToBacklogInputSchema },
+    }],
+    result: { mode: 'strict', typeSymbol: 'dsh-daily-sticky#StickyPlan', schema: stickyPlanSchema },
+  },
+  {
+    id: 'dsh-daily-sticky#sticky/listBacklog',
+    service: 'sticky',
+    namespace: 'sticky',
+    method: 'listBacklog',
+    invocation: { kind: 'direct' },
+    parameters: [],
+    result: { mode: 'strict', typeSymbol: 'dsh-daily-sticky#StickyBacklog', schema: stickyBacklogSchema },
+  },
+  {
+    id: 'dsh-daily-sticky#sticky/extractFromBacklog',
+    service: 'sticky',
+    namespace: 'sticky',
+    method: 'extractFromBacklog',
+    invocation: { kind: 'direct' },
+    parameters: [{
+      name: 'input',
+      wire: 'input',
+      source: 'json',
+      codec: { mode: 'strict', typeSymbol: 'dsh-daily-sticky#ExtractFromBacklogInput', schema: extractFromBacklogInputSchema },
+    }],
+    result: { mode: 'strict', typeSymbol: 'dsh-daily-sticky#StickyPlan', schema: stickyPlanSchema },
+  },
+  {
+    id: 'dsh-daily-sticky#sticky/deleteFromBacklog',
+    service: 'sticky',
+    namespace: 'sticky',
+    method: 'deleteFromBacklog',
+    invocation: { kind: 'direct' },
+    parameters: [{
+      name: 'backlog_id',
+      wire: 'backlog_id',
+      source: 'json',
+      codec: { mode: 'strict', typeSymbol: 'dsh-daily-sticky#BacklogId', schema: z.number().int().nonnegative() },
+    }],
+    result: { mode: 'strict', typeSymbol: 'dsh-daily-sticky#StickyBacklog', schema: stickyBacklogSchema },
   },
 ]

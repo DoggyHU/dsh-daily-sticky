@@ -11,11 +11,14 @@ import type { Datastore } from './datastore.ts'
 import type {
   StickyPlan,
   StickyStats,
+  StickyBacklog,
   AddTaskInput,
   EditTaskInput,
   SetDoneInput,
   SetNoteInput,
   DeleteTaskInput,
+  MoveToBacklogInput,
+  ExtractFromBacklogInput,
   StatsInput,
   AiExtractInput,
   AiExtractResult,
@@ -72,6 +75,30 @@ export class StickyRuntime extends TypertRemoteService {
   @Remote
   setNote(input: SetNoteInput): StickyPlan {
     return this.ds.setNote(input.date, input.task_id, input.note)
+  }
+
+  /** "晚点说": move a day task into the cross-day 待办篮子. */
+  @Remote
+  moveToBacklog(input: MoveToBacklogInput): StickyPlan {
+    return this.ds.moveToBacklog(input.date, input.task_id)
+  }
+
+  /** List the whole 待办篮子 (cross-day, not tied to any date). */
+  @Remote
+  listBacklog(): StickyBacklog {
+    return this.ds.listBacklog()
+  }
+
+  /** Extract a basket task onto a chosen day as an active task. */
+  @Remote
+  extractFromBacklog(input: ExtractFromBacklogInput): StickyPlan {
+    return this.ds.extractFromBacklog(input.backlog_id, input.date)
+  }
+
+  /** Permanently drop a basket task. */
+  @Remote
+  deleteFromBacklog(backlog_id: number): StickyBacklog {
+    return this.ds.deleteFromBacklog(backlog_id)
   }
 
   /** Weekly/monthly aggregates with WoW/MoM deltas for a reference date. */

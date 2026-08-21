@@ -8,7 +8,7 @@
 import type { Context } from '@deepseek-ai/cordis';
 import { TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol';
 import type { Datastore } from './datastore.ts';
-import type { StickyPlan, StickyStats, AddTaskInput, EditTaskInput, SetDoneInput, SetNoteInput, DeleteTaskInput, StatsInput, AiExtractInput, AiExtractResult, ModelListResult } from './contract.ts';
+import type { StickyPlan, StickyStats, StickyBacklog, AddTaskInput, EditTaskInput, SetDoneInput, SetNoteInput, DeleteTaskInput, MoveToBacklogInput, ExtractFromBacklogInput, StatsInput, AiExtractInput, AiExtractResult, ModelListResult } from './contract.ts';
 /** Daily sticky note service: plan CRUD + stats + AI 智能输入. */
 export declare class StickyRuntime extends TypertRemoteService {
     private readonly ds;
@@ -30,6 +30,14 @@ export declare class StickyRuntime extends TypertRemoteService {
     editTask(input: EditTaskInput): StickyPlan;
     /** Set (or clear) a task's note/备注. */
     setNote(input: SetNoteInput): StickyPlan;
+    /** "晚点说": move a day task into the cross-day 待办篮子. */
+    moveToBacklog(input: MoveToBacklogInput): StickyPlan;
+    /** List the whole 待办篮子 (cross-day, not tied to any date). */
+    listBacklog(): StickyBacklog;
+    /** Extract a basket task onto a chosen day as an active task. */
+    extractFromBacklog(input: ExtractFromBacklogInput): StickyPlan;
+    /** Permanently drop a basket task. */
+    deleteFromBacklog(backlog_id: number): StickyBacklog;
     /** Weekly/monthly aggregates with WoW/MoM deltas for a reference date. */
     stats(input: StatsInput): StickyStats;
     /**

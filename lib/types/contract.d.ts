@@ -34,6 +34,29 @@ export interface StickyPlan {
     readonly tasks: StickyTask[];
     readonly saved_at: string;
 }
+/**
+ * One deferred ("晚点说") task sitting in the cross-day 待办篮子. Unlike a day
+ * task, a basket task is not bound to any calendar day: it stays in the basket
+ * until the user extracts it back onto a chosen day (becoming an active task)
+ * or deletes it.
+ */
+export interface BacklogTask {
+    /** Stable id within the basket. */
+    readonly backlog_id: number;
+    readonly text: string;
+    readonly note?: string;
+    /** When the task was first created (any day). */
+    readonly created_at: string;
+    /** When it was parked into the basket via "晚点说". */
+    readonly moved_at: string;
+    /** The day it was parked from (YYYY-MM-DD), for a "3天前" style hint. */
+    readonly origin_date: string;
+}
+/** The persistent 待办篮子 document (one cross-day basket). */
+export interface StickyBacklog {
+    readonly tasks: BacklogTask[];
+    readonly saved_at: string;
+}
 /** One mutation typed by action (mirrors the original skill's logs event vocabulary). */
 export type StickyLogAction = 'added' | 'done' | 'undone' | 'edited' | 'deleted' | 'note';
 /** One logged event with a timestamp (fuels weekly/monthly + MoM/WoW stats). */
@@ -102,6 +125,25 @@ export declare const stickyPlanSchema: z.ZodReadonly<z.ZodObject<{
         created_at: z.ZodString;
         done_at: z.ZodNullable<z.ZodString>;
         origin_date: z.ZodOptional<z.ZodString>;
+    }, z.core.$strip>>>;
+    saved_at: z.ZodString;
+}, z.core.$strip>>;
+export declare const backlogTaskSchema: z.ZodReadonly<z.ZodObject<{
+    backlog_id: z.ZodNumber;
+    text: z.ZodString;
+    note: z.ZodOptional<z.ZodString>;
+    created_at: z.ZodString;
+    moved_at: z.ZodString;
+    origin_date: z.ZodString;
+}, z.core.$strip>>;
+export declare const stickyBacklogSchema: z.ZodReadonly<z.ZodObject<{
+    tasks: z.ZodArray<z.ZodReadonly<z.ZodObject<{
+        backlog_id: z.ZodNumber;
+        text: z.ZodString;
+        note: z.ZodOptional<z.ZodString>;
+        created_at: z.ZodString;
+        moved_at: z.ZodString;
+        origin_date: z.ZodString;
     }, z.core.$strip>>>;
     saved_at: z.ZodString;
 }, z.core.$strip>>;
@@ -205,6 +247,16 @@ export declare const deleteTaskInputSchema: z.ZodReadonly<z.ZodObject<{
     date: z.ZodString;
     task_id: z.ZodNumber;
 }, z.core.$strip>>;
+/** Wire codec: "晚点说" — take a day task out of the plan and into the basket. */
+export declare const moveToBacklogInputSchema: z.ZodReadonly<z.ZodObject<{
+    date: z.ZodString;
+    task_id: z.ZodNumber;
+}, z.core.$strip>>;
+/** Wire codec: extract a basket task onto a chosen day as an active task. */
+export declare const extractFromBacklogInputSchema: z.ZodReadonly<z.ZodObject<{
+    backlog_id: z.ZodNumber;
+    date: z.ZodString;
+}, z.core.$strip>>;
 /** Wire codec: a date string for stats. */
 export declare const statsInputSchema: z.ZodReadonly<z.ZodObject<{
     date: z.ZodString;
@@ -272,6 +324,14 @@ export interface SetNoteInput {
 export interface DeleteTaskInput {
     readonly date: string;
     readonly task_id: number;
+}
+export interface MoveToBacklogInput {
+    readonly date: string;
+    readonly task_id: number;
+}
+export interface ExtractFromBacklogInput {
+    readonly backlog_id: number;
+    readonly date: string;
 }
 export interface StatsInput {
     readonly date: string;

@@ -17,6 +17,8 @@ import type {
   StickyPlan,
   StickyTask,
   StickyStats,
+  StickyBacklog,
+  BacklogTask,
   AiExtractTask,
   ModelChoice,
 } from '../contract.ts'
@@ -243,15 +245,66 @@ function StatsSection({ stats, onClose }: { stats: StickyStats; onClose: () => v
   )
 }
 
+function BacklogSection({ backlog, onExtract, onDelete, onClose }: {
+  backlog: BacklogTask[]
+  onExtract: (b: BacklogTask) => void
+  onDelete: (b: BacklogTask) => void
+  onClose: () => void
+}) {
+  const box: CSSProperties = {
+    border: `1px solid ${T.border}`,
+    borderRadius: 8,
+    background: T.surface2,
+    padding: 10,
+    marginBottom: 8,
+  }
+  return (
+    <div style={box}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+        <b style={{ fontSize: 12 }}>待办篮子（晚点说）</b>
+        <button style={iconBtn} onClick={onClose} title="收起">✕</button>
+      </div>
+      <div style={{ color: T.textFaint, fontSize: 11, marginBottom: 6 }}>
+        点「晚点说」的任务放这里，不占当日列表。可以随时提取回某天，或彻底删除。
+      </div>
+      {backlog.length === 0 ? (
+        <div style={{ color: T.textFaint, fontSize: 12, padding: 4 }}>篮子还是空的。</div>
+      ) : (
+        <ul style={listStyle}>
+          {backlog.map(b => {
+            const days = Math.max(0, diffDays(b.origin_date, todayKey()))
+            const ago = days === 0 ? '' : days === 1 ? '昨天' : days === 2 ? '前天' : `${days}天前`
+            return (
+              <li key={b.backlog_id} style={{ display: 'flex', gap: 6, alignItems: 'flex-start', marginBottom: 4 }}>
+                <div style={{ flex: 1, wordBreak: 'break-word', userSelect: 'text' }}>
+                  <div style={{ color: T.text }}>{b.text}</div>
+                  {(b.note || ago) && (
+                    <div style={{ color: T.textDim, fontSize: 12 }}>
+                      {b.note ? `[${b.note}]` : ''}{ago ? (b.note ? ` · ${ago}` : ago) : ''}
+                    </div>
+                  )}
+                </div>
+                <button style={{ ...iconBtn, color: T.accent, whiteSpace: 'nowrap' }} title="提取到今天" onClick={() => onExtract(b)}>提取</button>
+                <button style={iconBtn} title="删除" onClick={() => onDelete(b)}>删除</button>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </div>
+  )
+}
+
 // --- task row ---
 
-function TaskRow({ task, ageLabel, onToggle, onEdit, onDelete, onNote }: {
+function TaskRow({ task, ageLabel, onToggle, onEdit, onDelete, onNote, onBacklog }: {
   task: StickyTask
   ageLabel?: string
   onToggle: (t: StickyTask) => void
   onEdit: (t: StickyTask, text: string) => void
   onDelete: (t: StickyTask) => void
   onNote: (t: StickyTask, note: string) => void
+  onBacklog: (t: StickyTask) => void
 }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(task.text)
@@ -328,6 +381,7 @@ function TaskRow({ task, ageLabel, onToggle, onEdit, onDelete, onNote }: {
           </>
         )}
       </div>
+      <button style={{ ...iconBtn, color: T.textDim }} title="晚点说（进待办篮子，不删除）" onClick={() => onBacklog(task)}>晚点说</button>
       <button style={iconBtn} title="删除" onClick={() => onDelete(task)}>删除</button>
     </li>
   )
@@ -342,6 +396,8 @@ export function StickyPanel({ sticky }: { sticky: StickyNamespaceFace }) {
   const [newText, setNewText] = useState('')
   const [showStats, setShowStats] = useState(false)
   const [stats, setStats] = useState<StickyStats | null>(null)
+  const [showBacklog, setShowBacklog] = useState(false)
+  const [backlog, setBacklog] = useState<BacklogTask[]>([])
   const [error, setError] = useState<string | null>(null)
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null)
   const panelRef = useRef<HTMLDivElement | null>(null)
@@ -401,6 +457,41 @@ export function StickyPanel({ sticky }: { sticky: StickyNamespaceFace }) {
     } else {
       setError(res.error?.message ?? '操作失败')
     }
+  }
+
+  const loadBacklog = async () => {
+    const res = await sticky.listBacklog()
+    if (res.ok) { setBacklog(res.value.tasks); setError(null) }
+    else setError(res.error?.message ?? '读取待办篮子失败')
+  }
+
+  const moveToBacklog = (t: StickyTask) => {
+    if (t.done) return
+    void (async () => {
+      await mutate(() => sticky.moveToBacklog({ date, task_id: t.task_id }))
+      await loadBacklog()
+    })()
+  }
+
+  const extractToToday = (b: BacklogTask) => {
+    void (async () => {
+      await mutate(() => sticky.extractFromBacklog({ backlog_id: b.backlog_id, date }))
+      await loadBacklog()
+    })()
+  }
+
+  const deleteFromBacklog = (b: BacklogTask) => {
+    void (async () => {
+      const res = await sticky.deleteFromBacklog(b.backlog_id)
+      if (res.ok) setBacklog(res.value.tasks)
+      else setError(res.error?.message ?? '删除失败')
+    })()
+  }
+
+  const toggleBacklog = async () => {
+    const next = !showBacklog
+    setShowBacklog(next)
+    if (next) await loadBacklog()
   }
 
   const addOne = () => {
@@ -542,6 +633,9 @@ export function StickyPanel({ sticky }: { sticky: StickyNamespaceFace }) {
           >
             <span style={titleStyle} title={date}>今日便签 {badge !== '' ? `(${badge})` : ''}</span>
             <button style={iconBtn} title="统计（周/月环比）" onClick={() => void toggleStats()}>统计</button>
+            <button style={iconBtn} title={showBacklog ? '收起待办篮子' : '待办篮子（晚点说的任务）'} onClick={() => void toggleBacklog()}>
+              篮子{backlog.length > 0 ? `(${backlog.length})` : ''}
+            </button>
             <button style={iconBtn} title={collapsed ? '展开' : '收起'} onClick={() => setCollapsed(c => !c)}>{collapsed ? '展开' : '收起'}</button>
             <button style={iconBtn} title="关闭" onClick={() => setOpen(false)}>✕</button>
           </div>
@@ -556,6 +650,14 @@ export function StickyPanel({ sticky }: { sticky: StickyNamespaceFace }) {
                 {showStats && stats && (
                   <StatsSection stats={stats} onClose={() => setShowStats(false)} />
                 )}
+                {showBacklog && (
+                  <BacklogSection
+                    backlog={backlog}
+                    onExtract={extractToToday}
+                    onDelete={deleteFromBacklog}
+                    onClose={() => setShowBacklog(false)}
+                  />
+                )}
                 {plan && plan.tasks.length === 0 ? (
                   <div style={{ color: T.textFaint, padding: 8 }}>今天还没有任务。在下面添加，或让 AI 帮你记（「把这个加进便签」）。</div>
                 ) : (
@@ -569,6 +671,7 @@ export function StickyPanel({ sticky }: { sticky: StickyNamespaceFace }) {
                         onEdit={(t, text) => void mutate(() => sticky.editTask({ date, task_id: t.task_id, text }))}
                         onDelete={t => void mutate(() => sticky.deleteTask({ date, task_id: t.task_id }))}
                         onNote={(t, note) => void mutate(() => sticky.setNote({ date, task_id: t.task_id, note }))}
+                        onBacklog={moveToBacklog}
                       />
                     ))}
                   </ul>

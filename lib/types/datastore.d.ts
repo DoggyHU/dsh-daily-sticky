@@ -1,10 +1,21 @@
-import type { StickyPlan, StickyLog, StickyLogEvent } from './contract.ts';
+import type { StickyPlan, StickyLog, StickyLogEvent, StickyBacklog } from './contract.ts';
 /** Storage namespace wrapping a resolved data dir. */
 export declare class Datastore {
     private readonly dataDir;
     constructor(dataDir: string);
     planPath(date: string): string;
     logPath(date: string): string;
+    backlogPath(): string;
+    private emptyBacklog;
+    readBacklog(): StickyBacklog;
+    private writeBacklog;
+    /** "晚点说": pull a task out of a day's plan and park it in the 待办篮子. */
+    moveToBacklog(date: string, taskId: number): StickyPlan;
+    listBacklog(): StickyBacklog;
+    /** "提取到今天": take a basket task out and make it an active task on `date`. */
+    extractFromBacklog(backlogId: number, date: string): StickyPlan;
+    /** Permanently drop a basket task (does not touch any day plan). */
+    deleteFromBacklog(backlogId: number): StickyBacklog;
     readPlan(date: string): StickyPlan;
     /**
      * When a new day's plan does not exist yet, seed it with the unfinished

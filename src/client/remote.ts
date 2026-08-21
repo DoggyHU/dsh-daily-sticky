@@ -9,11 +9,14 @@ import { STICKY_INVOCATIONS } from '../contract.ts'
 import type {
   StickyPlan,
   StickyStats,
+  StickyBacklog,
   AddTaskInput,
   EditTaskInput,
   SetDoneInput,
   SetNoteInput,
   DeleteTaskInput,
+  MoveToBacklogInput,
+  ExtractFromBacklogInput,
   StatsInput,
   AiExtractInput,
   AiExtractResult,
@@ -25,11 +28,15 @@ export type {
   StickyStats,
   StickyTask,
   StickyPeriodStat,
+  StickyBacklog,
+  BacklogTask,
   AddTaskInput,
   EditTaskInput,
   SetDoneInput,
   SetNoteInput,
   DeleteTaskInput,
+  MoveToBacklogInput,
+  ExtractFromBacklogInput,
   StatsInput,
   AiExtractInput,
   AiExtractTask,
@@ -53,6 +60,10 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     setDone: (input: SetDoneInput) => Promise<RemoteResult<StickyPlan>>
     editTask: (input: EditTaskInput) => Promise<RemoteResult<StickyPlan>>
     setNote: (input: SetNoteInput) => Promise<RemoteResult<StickyPlan>>
+    moveToBacklog: (input: MoveToBacklogInput) => Promise<RemoteResult<StickyPlan>>
+    listBacklog: () => Promise<RemoteResult<StickyBacklog>>
+    extractFromBacklog: (input: ExtractFromBacklogInput) => Promise<RemoteResult<StickyPlan>>
+    deleteFromBacklog: (backlog_id: number) => Promise<RemoteResult<StickyBacklog>>
     stats: (input: StatsInput) => Promise<RemoteResult<StickyStats>>
     aiExtract: (input: AiExtractInput) => Promise<RemoteResult<AiExtractResult>>
     listModels: () => Promise<RemoteResult<ModelListResult>>
@@ -64,6 +75,10 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     'sticky/setDone': (input: SetDoneInput) => Promise<RemoteResult<StickyPlan>>
     'sticky/editTask': (input: EditTaskInput) => Promise<RemoteResult<StickyPlan>>
     'sticky/setNote': (input: SetNoteInput) => Promise<RemoteResult<StickyPlan>>
+    'sticky/moveToBacklog': (input: MoveToBacklogInput) => Promise<RemoteResult<StickyPlan>>
+    'sticky/listBacklog': () => Promise<RemoteResult<StickyBacklog>>
+    'sticky/extractFromBacklog': (input: ExtractFromBacklogInput) => Promise<RemoteResult<StickyPlan>>
+    'sticky/deleteFromBacklog': (backlog_id: number) => Promise<RemoteResult<StickyBacklog>>
     'sticky/stats': (input: StatsInput) => Promise<RemoteResult<StickyStats>>
     'sticky/aiExtract': (input: AiExtractInput) => Promise<RemoteResult<AiExtractResult>>
     'sticky/listModels': () => Promise<RemoteResult<ModelListResult>>
